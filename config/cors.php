@@ -24,6 +24,7 @@ return [
         'https://baitulmal-production-e9a1.up.railway.app',
         'http://localhost:5173',
         'http://localhost:3000',
+        'https://baitulmalldashboard-production.up.railway.app'
     ],
 
     'allowed_origins_patterns' => [],
