@@ -1,0 +1,36 @@
+# Avoid Vercel function auto-detection in subdirectories
+app/Http/Controllers/ApiBackend
+app/Http/Controllers/ApiControllers
+vendor/**/[Aa][Pp][Ii]/
+vendor/**/[Aa][Pp][Ii]
+# But ALLOW the root api directory
+!api/
+!api/*.php
+database/*.sqlite*
+storage/framework/cache/*
+storage/logs/*
+public/build
+check_*.php
+debug_*.php
+fix_*.php
+verify_*.php
+list_*.php
+count_users.php
+seed_settings_temp.php
+new 4.txt
+bootstrap/cache/*
+.cursor
+.git
+.gitignore
+phpunit.xml
+vite.config.js
+package.json
+vendor
+node_modules
+.vercel
+.env.local
+.env.*.local
+storage/*.key
+storage/pail
+# composer.lock - REMOVED from ignore to ensure build consistency
+# package-lock.json - REMOVED from ignore to ensure build consistency
