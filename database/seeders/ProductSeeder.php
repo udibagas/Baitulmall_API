@@ -32,7 +32,7 @@ class ProductSeeder extends Seeder
                 'seller_phone' => '6281234567890',
                 'category' => 'Kuliner',
                 'rt_id' => $rt1,
-                'is_active' => true,
+                // 'is_active' removed to use default PostgreSQL true value
             ],
             [
                 'name' => 'Tas Anyaman Pandan',
@@ -42,7 +42,7 @@ class ProductSeeder extends Seeder
                 'seller_phone' => '6281987654321',
                 'category' => 'Kerajinan',
                 'rt_id' => $rt2,
-                'is_active' => true,
+                // 'is_active' removed to use default PostgreSQL true value
             ],
             [
                 'name' => 'Jasa Jahit & Permak',
@@ -52,7 +52,7 @@ class ProductSeeder extends Seeder
                 'seller_phone' => '6285678901234',
                 'category' => 'Jasa',
                 'rt_id' => $rt1,
-                'is_active' => true,
+                // 'is_active' removed to use default PostgreSQL true value
             ],
             [
                 'name' => 'Kemeja Batik Cap',
@@ -62,7 +62,7 @@ class ProductSeeder extends Seeder
                 'seller_phone' => '628111222333',
                 'category' => 'Kerajinan',
                 'rt_id' => $rt3,
-                'is_active' => true,
+                // 'is_active' removed to use default PostgreSQL true value
             ],
             [
                 'name' => 'Sambal Bawang Botol',
@@ -72,7 +72,7 @@ class ProductSeeder extends Seeder
                 'seller_phone' => '628555666777',
                 'category' => 'Kuliner',
                 'rt_id' => $rt2,
-                'is_active' => true,
+                // 'is_active' removed to use default PostgreSQL true value
             ],
             [
                 'name' => 'Keripik Usus Renyah',
@@ -82,7 +82,7 @@ class ProductSeeder extends Seeder
                 'seller_phone' => '628123445566',
                 'category' => 'Kuliner',
                 'rt_id' => $rt4,
-                'is_active' => true,
+                // 'is_active' removed to use default PostgreSQL true value
             ],
             [
                 'name' => 'Gantungan Kunci Kayu Ukir',
@@ -92,7 +92,7 @@ class ProductSeeder extends Seeder
                 'seller_phone' => '628560099887',
                 'category' => 'Kerajinan',
                 'rt_id' => $rt4,
-                'is_active' => true,
+                // 'is_active' removed to use default PostgreSQL true value
             ],
             [
                 'name' => 'Madu Klanceng Asli',
@@ -102,7 +102,7 @@ class ProductSeeder extends Seeder
                 'seller_phone' => '6281333444555',
                 'category' => 'Kuliner',
                 'rt_id' => $rt5,
-                'is_active' => true,
+                // 'is_active' removed to use default PostgreSQL true value
             ],
             [
                 'name' => 'Jasa Cuci Motor Kinclong',
@@ -112,7 +112,7 @@ class ProductSeeder extends Seeder
                 'seller_phone' => '628998877665',
                 'category' => 'Jasa',
                 'rt_id' => $rt5,
-                'is_active' => true,
+                // 'is_active' removed to use default PostgreSQL true value
             ],
             [
                 'name' => 'Bandeng Presto Vacuum',
@@ -122,7 +122,7 @@ class ProductSeeder extends Seeder
                 'seller_phone' => '6282211223344',
                 'category' => 'Kuliner',
                 'rt_id' => $rt6,
-                'is_active' => true,
+                // 'is_active' removed to use default PostgreSQL true value
             ],
             [
                 'name' => 'Keset Perca Karakter',
@@ -132,7 +132,7 @@ class ProductSeeder extends Seeder
                 'seller_phone' => '6287766554433',
                 'category' => 'Kerajinan',
                 'rt_id' => $rt6,
-                'is_active' => true,
+                // 'is_active' removed to use default PostgreSQL true value
             ],
             [
                 'name' => 'Aneka Kue Basah (Snack Box)',
@@ -156,8 +156,16 @@ class ProductSeeder extends Seeder
             ],
         ];
 
-        foreach ($products as $product) {
-            Product::updateOrCreate(['name' => $product['name']], $product);
+        $now = now();
+        foreach ($products as &$product) {
+            $product['is_active'] = \Illuminate\Support\Facades\DB::raw('true');
+            $product['created_at'] = $now;
+            $product['updated_at'] = $now;
+            
+            // Only insert if it doesn't exist
+            if (\Illuminate\Support\Facades\DB::table('products')->where('name', $product['name'])->doesntExist()) {
+                \Illuminate\Support\Facades\DB::table('products')->insert($product);
+            }
         }
     }
 }

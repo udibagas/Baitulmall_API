@@ -22,7 +22,7 @@ class Product extends Model
 
     protected $casts = [
         'price' => 'decimal:2',
-        'is_active' => 'boolean',
+        // 'is_active' => 'boolean', // Removed for PostgreSQL compatibility where it causes integer conversion errors
     ];
 
     public function rt(): BelongsTo
