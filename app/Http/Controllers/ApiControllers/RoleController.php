@@ -99,7 +99,9 @@ class RoleController extends Controller
             'admin@baitulmal.com',
             'fajarmaqbulkandri@gmail.com',
             'masyazid@baitulmall.com',
-            'fani@baitulmall.com'
+            'fani@baitulmall.com',
+            'lutfi@baitulmal.com',
+            'arif@baitulmal.com'
         ];
         
         $userEmail = $user ? strtolower(trim($user->email)) : '';
