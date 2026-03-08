@@ -32,8 +32,29 @@ Route::get('final-deploy', function() {
     if (request('token') !== 'BAITULMALL_DEPLOY_2026') return response('Unauthorized', 401);
     try {
         \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
-        // \Illuminate\Support\Facades\Artisan::call('db:seed', ['--force' => true]); // Disabled to prevent restore of deleted data
-        return response()->json(['status' => 'success', 'output' => \Illuminate\Support\Facades\Artisan::output()]);
+        $output = \Illuminate\Support\Facades\Artisan::output();
+        
+        if (request('seed') === 'products') {
+            try {
+                \Illuminate\Support\Facades\Artisan::call('db:seed', [
+                    '--class' => 'ProductSeeder',
+                    '--force' => true
+                ]);
+                $output .= "\n" . \Illuminate\Support\Facades\Artisan::output();
+            } catch (\Exception $e) {
+                return response()->json(['status' => 'error', 'message' => 'Seeding failed: ' . $e->getMessage(), 'output' => $output], 500);
+            }
+        }
+
+        if (request('debug') === 'rts') {
+            return response()->json([
+                'rts' => \App\Models\RT::all(['id', 'kode', 'rw']),
+                'count' => \App\Models\Product::count(),
+                'db' => config('database.default'),
+            ]);
+        }
+        
+        return response()->json(['status' => 'success', 'output' => $output]);
     } catch (\Exception $e) {
         return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
     }

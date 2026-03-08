@@ -12,6 +12,14 @@ class ProductSeeder extends Seeder
      */
     public function run(): void
     {
+        $rt1 = \App\Models\RT::where('kode', '01')->first()?->id ?? 1;
+        $rt2 = \App\Models\RT::where('kode', '02')->first()?->id ?? 2;
+        $rt3 = \App\Models\RT::where('kode', '03')->first()?->id ?? 3;
+        $rt4 = \App\Models\RT::where('kode', '04')->first()?->id ?? 4;
+        $rt5 = \App\Models\RT::where('kode', '05')->first()?->id ?? 5;
+        $rt6 = \App\Models\RT::where('kode', '06')->first()?->id ?? 6;
+        $rt7 = \App\Models\RT::where('kode', '07')->first()?->id ?? 7;
+
         $products = [
             [
                 'name' => 'Keripik Singkong Pedas',
@@ -20,7 +28,7 @@ class ProductSeeder extends Seeder
                 'seller_name' => 'Ibu Siti',
                 'seller_phone' => '6281234567890',
                 'category' => 'Kuliner',
-                'rt_id' => 1, // Assuming RT 1 exists
+                'rt_id' => $rt1,
                 'is_active' => true,
             ],
             [

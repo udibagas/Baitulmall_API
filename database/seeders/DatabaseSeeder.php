@@ -33,6 +33,7 @@ class DatabaseSeeder extends Seeder
             SDMSeeder::class,
             SignatureSeeder::class,
             ZakatFitrahSeeder::class,
+            ProductSeeder::class,
             SettingSeeder::class,
             // RequestedUsersSeeder::class, // Disabled to prevent restore of deleted users
             TransactionalDataSeeder::class,

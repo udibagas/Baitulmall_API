@@ -15,26 +15,39 @@ class ProductController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Product::where('is_active', true);
+        try {
+            $query = Product::where('is_active', true);
 
-        // Filter by Category
-        if ($request->has('category') && $request->category !== 'Sumua') {
-             $category = $request->category;
-             if ($category && $category !== 'All') {
-                 $query->where('category', $category);
-             }
+            // Filter by Category
+            if ($request->has('category') && $request->category !== 'Sumua' && $request->category !== 'Semua') {
+                 $category = $request->category;
+                 if ($category && $category !== 'All') {
+                     $query->where('category', $category);
+                 }
+            }
+
+            // Search by name - Grouped to avoid breaking is_active filter
+            if ($request->has('search') && $request->search !== '') {
+                $search = $request->search;
+                $query->where(function($q) use ($search) {
+                    $q->where('name', 'like', "%{$search}%")
+                      ->orWhere('seller_name', 'like', "%{$search}%");
+                });
+            }
+
+            $products = $query->with('rt')->orderBy('id', 'desc')->paginate(12);
+
+            return response()->json($products);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error("Production Product API Error: " . $e->getMessage());
+            
+            return response()->json([
+                'status' => 'error',
+                'message' => 'DEBUG ERROR: ' . $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine()
+            ], 500);
         }
-
-        // Search by name
-        if ($request->has('search')) {
-            $search = $request->search;
-            $query->where('name', 'like', "%{$search}%")
-                  ->orWhere('seller_name', 'like', "%{$search}%");
-        }
-
-        $products = $query->with('rt')->latest()->paginate(12);
-
-        return response()->json($products);
     }
 
     /**
