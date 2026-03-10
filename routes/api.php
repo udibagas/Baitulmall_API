@@ -297,7 +297,8 @@ Route::prefix('v1')->group(function () {
 
 Route::get('/force-migrate', function () {
     try {
-        \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
+        \Illuminate\Support\Facades\Artisan::call('optimize:clear');
+        \Illuminate\Support\Facades\Cache::forget('public_stats_aggregation_v2');
         return response()->json(['success' => true, 'output' => \Illuminate\Support\Facades\Artisan::output()]);
     } catch (\Exception $e) {
         return response()->json(['success' => false, 'error' => $e->getMessage()]);
