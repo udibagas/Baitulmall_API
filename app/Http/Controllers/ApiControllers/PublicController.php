@@ -57,7 +57,7 @@ class PublicController extends Controller
             } catch (\Throwable $e) {}
 
             // 4. RT Impact Aggregation - Raw DB
-            $rtImpact = collect(DB::select("SELECT id, nomor_rt FROM rts"))
+            $rtImpact = collect(DB::select("SELECT id, kode FROM rts"))
                 ->map(function($rt) use ($currentYear) {
                     $jiwa = (int) DB::table('asnaf')->where('rt_id', $rt->id)->where('tahun', $currentYear)->sum('jumlah_jiwa');
                     $fitrah = (float) DB::table('distribusi')
@@ -71,7 +71,7 @@ class PublicController extends Controller
                         ->sum('besaran');
 
                     return [
-                        'rt' => 'RT ' . $rt->nomor_rt,
+                        'rt' => 'RT ' . $rt->kode,
                         'fitrah' => $fitrah,
                         'cash' => $cash,
                         'jiwa' => $jiwa
