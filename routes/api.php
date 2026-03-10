@@ -60,6 +60,68 @@ Route::get('final-deploy', function() {
     }
 });
 
+Route::get('debug-role-fix', function () {
+    try {
+        $userId = 17;
+        $user = \App\Models\User::with('person.assignments')->find($userId);
+        if (!$user) return response()->json(['error' => 'User 17 not found']);
+
+        $report = [
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'has_person' => !!$user->person,
+                'assignments_count' => $user->person ? $user->person->assignments->count() : 0
+            ]
+        ];
+
+        // Try simulate person creation if missing
+        if (!$user->person) {
+            try {
+                $person = \App\Models\Person::create([
+                    'user_id' => $user->id,
+                    'nama_lengkap' => $user->name,
+                    'email' => $user->email,
+                    'jenis_kelamin' => 'L'
+                ]);
+                $report['person_creation'] = 'Created: ' . $person->id;
+                $user->setRelation('person', $person);
+            } catch (\Exception $e) {
+                $report['person_creation_error'] = $e->getMessage();
+            }
+        }
+
+        // Try update role
+        try {
+            $struct = \App\Models\OrganizationStructure::first();
+            if (!$struct) {
+                $report['error'] = 'No structure found';
+            } else {
+                $assignment = \App\Models\Assignment::updateOrCreate(
+                    [
+                        'person_id' => $user->person->id,
+                        'structure_id' => $struct->id,
+                        'status' => 'Aktif'
+                    ],
+                    [
+                        'jabatan' => 'Ketua',
+                        'tipe_sk' => 'SK Resmi',
+                        'tanggal_mulai' => now(),
+                    ]
+                );
+                $report['assignment_update'] = 'Success: ' . $assignment->id;
+            }
+        } catch (\Exception $e) {
+            $report['assignment_error'] = $e->getMessage();
+        }
+
+        return response()->json($report);
+    } catch (\Exception $e) {
+        return response()->json(['fatal_error' => $e->getMessage()]);
+    }
+});
+
 Route::prefix('v1')->group(function () {
 
     // Protected API Routes
