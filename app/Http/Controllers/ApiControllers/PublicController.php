@@ -26,160 +26,136 @@ class PublicController extends Controller
     public function statistics()
     {
         try {
-            return Cache::remember('public_stats_aggregation_v4', 300, function () {
-                $currentYear = date('Y');
+            $currentYear = date('Y');
 
-                // 1. Zakat Fitrah Aggregation (Optimized)
-                try {
-                    $zakatFitrah = DB::table('muzaki')->where('tahun', $currentYear)
-                        ->select(
-                            DB::raw('SUM(CAST(jumlah_beras_kg AS NUMERIC)) as total_beras'),
-                            DB::raw('SUM(jumlah_jiwa) as total_jiwa'),
-                            DB::raw('COUNT(id) as total_muzaki')
-                        )->first();
-                } catch (\Throwable $e) {
-                    $zakatFitrah = (object) ['total_beras' => 0, 'total_jiwa' => 0, 'total_muzaki' => 0];
-                }
+            // 1. Zakat Fitrah Aggregation (Optimized)
+            try {
+                $zakatFitrah = DB::table('muzaki')->where('tahun', $currentYear)
+                    ->select(
+                        DB::raw('SUM(CAST(jumlah_beras_kg AS NUMERIC)) as total_beras'),
+                        DB::raw('SUM(jumlah_jiwa) as total_jiwa'),
+                        DB::raw('COUNT(id) as total_muzaki')
+                    )->first();
+            } catch (\Throwable $e) {
+                $zakatFitrah = (object) ['total_beras' => 0, 'total_jiwa' => 0, 'total_muzaki' => 0];
+            }
 
-                // 2. Simple Aggregations with Null Coalescing
-                $zakatMal = (float) DB::table('zakat_malls')->whereYear('tanggal', $currentYear)->sum('jumlah');
-                $sedekah = (float) DB::table('sedekah')->whereYear('tanggal', $currentYear)->where('jenis', 'penerimaan')->sum('jumlah');
-                $santunan = (float) DB::table('santunan_donations')->whereYear('tanggal', $currentYear)->sum('jumlah');
+            // 2. Simple Aggregations with Null Coalescing
+            $zakatMal = (float) DB::table('zakat_malls')->whereYear('tanggal', $currentYear)->sum('jumlah');
+            $sedekah = (float) DB::table('sedekah')->whereYear('tanggal', $currentYear)->where('jenis', 'penerimaan')->sum('jumlah');
+            $santunan = (float) DB::table('santunan_donations')->whereYear('tanggal', $currentYear)->sum('jumlah');
 
-                // 3. Distribution Aggregations
-                $fitrahDistributed = (float) DB::table('distribusi')->where('tahun', $currentYear)->sum('jumlah_kg');
-                $sedekahDistributed = (float) DB::table('sedekah')->whereYear('tanggal', $currentYear)->where('jenis', 'penyaluran')->sum('jumlah');
-                $malDistributed = (float) DB::table('santunan')->where('tahun', $currentYear)->sum('besaran');
-                
-                // Bypass SoftDeletes by using DB::table for Asnaf
-                $totalMustahikJiwa = 0;
-                try {
-                    $totalMustahikJiwa = (int) DB::table('asnaf')
+            // 3. Distribution Aggregations
+            $fitrahDistributed = (float) DB::table('distribusi')->where('tahun', $currentYear)->sum('jumlah_kg');
+            $sedekahDistributed = (float) DB::table('sedekah')->whereYear('tanggal', $currentYear)->where('jenis', 'penyaluran')->sum('jumlah');
+            $malDistributed = (float) DB::table('santunan')->where('tahun', $currentYear)->sum('besaran');
+            
+            // Bypass SoftDeletes by using DB::table for Asnaf
+            $totalMustahikJiwa = 0;
+            try {
+                $totalMustahikJiwa = (int) DB::table('asnaf')->where('tahun', $currentYear)->where('status', 'active')->sum('jumlah_jiwa');
+            } catch (\Throwable $e) {}
+
+            // 4. RT Impact Aggregation - Raw DB
+            $rtImpact = collect(DB::select("SELECT id, nomor_rt FROM rts"))
+                ->map(function($rt) use ($currentYear) {
+                    $jiwa = (int) DB::table('asnaf')->where('rt_id', $rt->id)->where('tahun', $currentYear)->sum('jumlah_jiwa');
+                    $fitrah = (float) DB::table('distribusi')
+                        ->join('asnaf', 'distribusi.asnaf_id', '=', 'asnaf.id')
+                        ->where('asnaf.rt_id', $rt->id)
+                        ->where('distribusi.tahun', $currentYear)
+                        ->sum('distribusi.jumlah_kg');
+                    $cash = (float) DB::table('santunan')
+                        ->where('rt_id', $rt->id)
                         ->where('tahun', $currentYear)
-                        ->where('status', 'active')
-                        ->sum('jumlah_jiwa');
-                } catch (\Throwable $e) {}
-
-                // 4. RT Impact Aggregation - Raw DB to avoid trait issues
-                $rtImpact = DB::table('rts')
-                    ->select('rts.id', 'rts.nomor_rt')
-                    ->get()
-                    ->map(function($rt) use ($currentYear) {
-                        $jiwa = 0;
-                        try {
-                            $jiwa = (int) DB::table('asnaf')->where('rt_id', $rt->id)->where('tahun', $currentYear)->sum('jumlah_jiwa');
-                        } catch (\Throwable $e) {}
-                        
-                        $fitrah = 0;
-                        try {
-                            $fitrah = (float) DB::table('distribusi')
-                                ->join('asnaf', 'distribusi.asnaf_id', '=', 'asnaf.id')
-                                ->where('asnaf.rt_id', $rt->id)
-                                ->where('distribusi.tahun', $currentYear)
-                                ->sum('distribusi.jumlah_kg');
-                        } catch (\Throwable $e) {}
-
-                        $cash = (float) DB::table('santunan')
-                            ->where('rt_id', $rt->id)
-                            ->where('tahun', $currentYear)
-                            ->sum('besaran');
-
-                        return [
-                            'rt' => 'RT ' . $rt->nomor_rt,
-                            'fitrah' => $fitrah,
-                            'cash' => $cash,
-                            'jiwa' => $jiwa
-                        ];
-                    });
-
-                // 5. Monthly Trends - Database-agnostic approach (Postgres compatible)
-                $lastYear = $currentYear - 1;
-                
-                $zakatMalTrends = DB::table('zakat_malls')->where('tanggal', '>=', "$lastYear-01-01")
-                    ->select('tanggal', 'jumlah')
-                    ->get()
-                    ->groupBy(function($item) {
-                        try {
-                            $date = \Carbon\Carbon::parse($item->tanggal);
-                            return $date->format('Y-n');
-                        } catch (\Exception $e) { return 'unknown'; }
-                    })
-                    ->map(fn($group) => $group->sum('jumlah'));
-
-                $sedekahTrends = DB::table('sedekah')->where('tanggal', '>=', "$lastYear-01-01")
-                    ->where('jenis', 'penerimaan')
-                    ->select('tanggal', 'jumlah')
-                    ->get()
-                    ->groupBy(function($item) {
-                        try {
-                            $date = \Carbon\Carbon::parse($item->tanggal);
-                            return $date->format('Y-n');
-                        } catch (\Exception $e) { return 'unknown'; }
-                    })
-                    ->map(fn($group) => $group->sum('jumlah'));
-
-                $trends = collect(range(1, 12))->map(function($month) use ($currentYear, $lastYear, $zakatMalTrends, $sedekahTrends) {
-                    $curKey = "{$currentYear}-{$month}";
-                    $lastKey = "{$lastYear}-{$month}";
-                    
-                    $currentSum = ($zakatMalTrends->get($curKey) ?? 0) + ($sedekahTrends->get($curKey) ?? 0);
-                    $lastSum = ($zakatMalTrends->get($lastKey) ?? 0) + ($sedekahTrends->get($lastKey) ?? 0);
+                        ->sum('besaran');
 
                     return [
-                        'month' => date('M', mktime(0, 0, 0, $month, 1)),
-                        'current' => (float) $currentSum,
-                        'last' => (float) $lastSum
+                        'rt' => 'RT ' . $rt->nomor_rt,
+                        'fitrah' => $fitrah,
+                        'cash' => $cash,
+                        'jiwa' => $jiwa
                     ];
                 });
-                // 6. Recent Activities
-                $recentZakat = DB::table('muzaki')->latest()->limit(5)->get()->map(fn($z) => [
-                    'nama' => $this->maskName($z->nama), 'tipe' => 'Zakat Fitrah', 'nominal' => $z->jumlah_beras_kg . ' KG', 'tanggal' => (string)$z->created_at
-                ]);
-                $recentZakatMal = DB::table('zakat_malls')->latest('tanggal')->limit(5)->get()->map(fn($zm) => [
-                    'nama' => $this->maskName($zm->nama_muzaki), 'tipe' => 'Zakat Mal', 'nominal' => (float) $zm->jumlah, 'tanggal' => (string)$zm->tanggal
-                ]);
-                $recentSedekah = DB::table('sedekah')->latest('tanggal')->where('jenis', 'penerimaan')->limit(5)->get()->map(fn($s) => [
-                    'nama' => $this->maskName($s->nama_donatur), 'tipe' => 'Sedekah/Infaq', 'nominal' => (float) $s->jumlah, 'tanggal' => (string)$s->tanggal
-                ]);
 
-                $recent = $recentZakat->concat($recentZakatMal)->concat($recentSedekah)
-                    ->sortByDesc('tanggal')->values()->take(10);
+            // 5. Monthly Trends
+            $lastYear = $currentYear - 1;
+            
+            $zakatMalTrends = DB::table('zakat_malls')->where('tanggal', '>=', "$lastYear-01-01")
+                ->select('tanggal', 'jumlah')
+                ->get()
+                ->groupBy(function($item) {
+                    try { return \Carbon\Carbon::parse($item->tanggal)->format('Y-n'); } catch (\Exception $e) { return 'unknown'; }
+                })
+                ->map(fn($group) => $group->sum('jumlah'));
 
+            $sedekahTrends = DB::table('sedekah')->where('tanggal', '>=', "$lastYear-01-01")
+                ->where('jenis', 'penerimaan')
+                ->select('tanggal', 'jumlah')
+                ->get()
+                ->groupBy(function($item) {
+                    try { return \Carbon\Carbon::parse($item->tanggal)->format('Y-n'); } catch (\Exception $e) { return 'unknown'; }
+                })
+                ->map(fn($group) => $group->sum('jumlah'));
+
+            $trends = collect(range(1, 12))->map(function($month) use ($currentYear, $lastYear, $zakatMalTrends, $sedekahTrends) {
+                $curKey = "{$currentYear}-{$month}";
+                $lastKey = "{$lastYear}-{$month}";
                 return [
-                    'success' => true,
-                    'current_year' => $currentYear,
-                    'stats' => [
-                        'zakat' => [
-                            'beras' => (float) ($zakatFitrah->total_beras ?? 0),
-                            'jiwa' => (int) ($zakatFitrah->total_jiwa ?? 0),
-                            'muzaki' => (int) ($zakatFitrah->total_muzaki ?? 0),
-                            'mustahik_jiwa' => $totalMustahikJiwa,
-                        ],
-                        'zakat_mal' => $zakatMal,
-                        'sedekah' => $sedekah,
-                        'santunan' => $santunan,
-                        'grand_total_cash' => $zakatMal + $sedekah + $santunan,
-                        'distributed' => [
-                            'fitrah_beras' => $fitrahDistributed,
-                            'sedekah_infaq' => $sedekahDistributed,
-                            'zakat_mal' => $malDistributed,
-                        ],
-                        'analytics' => [
-                            'rt_impact' => $rtImpact,
-                            'asnaf_breakdown' => DB::table('asnaf')->where('tahun', $currentYear)
-                                ->select('kategori', DB::raw('count(*) as count'), DB::raw('sum(jumlah_jiwa) as jiwa'))
-                                ->groupBy('kategori')->get(),
-                            'trends' => $trends,
-                            'targets' => [
-                                'zakat_mal' => ['goal' => 50000000, 'current' => $zakatMal],
-                                'sedekah' => ['goal' => 25000000, 'current' => $sedekah],
-                                'beras' => ['goal' => 2000, 'current' => (float) ($zakatFitrah->total_beras ?? 0)],
-                            ]
-                        ]
-                    ],
-                    'recent_activity' => $recent
+                    'month' => date('M', mktime(0, 0, 0, $month, 1)),
+                    'current' => (float) (($zakatMalTrends->get($curKey) ?? 0) + ($sedekahTrends->get($curKey) ?? 0)),
+                    'last' => (float) (($zakatMalTrends->get($lastKey) ?? 0) + ($sedekahTrends->get($lastKey) ?? 0))
                 ];
             });
+
+            // 6. Recent Activities
+            $recentZakat = DB::table('muzaki')->latest()->limit(3)->get()->map(fn($z) => [
+                'nama' => $this->maskName($z->nama), 'tipe' => 'Zakat Fitrah', 'nominal' => $z->jumlah_beras_kg . ' KG', 'tanggal' => (string)$z->created_at
+            ]);
+            $recentZakatMal = DB::table('zakat_malls')->latest('id')->limit(3)->get()->map(fn($zm) => [
+                'nama' => $this->maskName($zm->nama_muzaki), 'tipe' => 'Zakat Mal', 'nominal' => (float) $zm->jumlah, 'tanggal' => (string)$zm->tanggal
+            ]);
+            $recentSedekah = DB::table('sedekah')->where('jenis', 'penerimaan')->latest('id')->limit(3)->get()->map(fn($s) => [
+                'nama' => $this->maskName($s->nama_donatur), 'tipe' => 'Sedekah/Infaq', 'nominal' => (float) $s->jumlah, 'tanggal' => (string)$s->tanggal
+            ]);
+
+            $recent = $recentZakat->concat($recentZakatMal)->concat($recentSedekah)->sortByDesc('tanggal')->values()->take(10);
+
+            return response()->json([
+                'success' => true,
+                'v' => '1.0.1',
+                'current_year' => $currentYear,
+                'stats' => [
+                    'zakat' => [
+                        'beras' => (float) ($zakatFitrah->total_beras ?? 0),
+                        'jiwa' => (int) ($zakatFitrah->total_jiwa ?? 0),
+                        'muzaki' => (int) ($zakatFitrah->total_muzaki ?? 0),
+                        'mustahik_jiwa' => $totalMustahikJiwa,
+                    ],
+                    'zakat_mal' => $zakatMal,
+                    'sedekah' => $sedekah,
+                    'santunan' => $santunan,
+                    'grand_total_cash' => $zakatMal + $sedekah + $santunan,
+                    'distributed' => [
+                        'fitrah_beras' => $fitrahDistributed,
+                        'sedekah_infaq' => $sedekahDistributed,
+                        'zakat_mal' => $malDistributed,
+                    ],
+                    'analytics' => [
+                        'rt_impact' => $rtImpact,
+                        'asnaf_breakdown' => DB::table('asnaf')->where('tahun', $currentYear)
+                            ->select('kategori', DB::raw('count(*) as count'), DB::raw('sum(jumlah_jiwa) as jiwa'))
+                            ->groupBy('kategori')->get(),
+                        'trends' => $trends,
+                        'targets' => [
+                            'zakat_mal' => ['goal' => 50000000, 'current' => $zakatMal],
+                            'sedekah' => ['goal' => 25000000, 'current' => $sedekah],
+                            'beras' => ['goal' => 2000, 'current' => (float) ($zakatFitrah->total_beras ?? 0)],
+                        ]
+                    ]
+                ],
+                'recent_activity' => $recent
+            ]);
         } catch (\Throwable $e) {
             return response()->json([
                 'success' => false,
