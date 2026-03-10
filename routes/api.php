@@ -15,6 +15,7 @@ use App\Http\Controllers\ApiControllers\RoleController;
 use App\Http\Controllers\ApiControllers\MustahikStatsController;
 use App\Http\Controllers\ApiControllers\SedekahAnalyticsController;
 use App\Http\Controllers\ApiControllers\MustahikScoringController;
+use App\Http\Controllers\ApiControllers\BackupController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Log;
 
@@ -122,6 +123,12 @@ Route::prefix('v1')->group(function () {
         Route::delete('distribusi/{id}', [DistribusiController::class, 'destroy']);
         Route::post('distribusi/{id}/mark-distributed', [DistribusiController::class, 'markAsDistributed']);
         Route::post('distribusi/{id}/mark-verified', [DistribusiController::class, 'markAsVerified']);
+
+        // ========== Backup & Restore ==========
+        Route::get('backup/asnaf', [BackupController::class, 'exportAsnaf']);
+        Route::post('restore/asnaf', [BackupController::class, 'importAsnaf']);
+        Route::get('backup/sdm', [BackupController::class, 'exportSDM']);
+        Route::post('restore/sdm', [BackupController::class, 'importSDM']);
     });
     
     // ========== Notifications ==========
@@ -292,5 +299,4 @@ Route::prefix('v1')->group(function () {
     Route::get('public/stories', [\App\Http\Controllers\ApiControllers\PublicController::class, 'stories']);
     Route::get('public/receipt/{type}/{id}', [\App\Http\Controllers\ApiControllers\PublicController::class, 'downloadReceipt']);
 });
-
 
