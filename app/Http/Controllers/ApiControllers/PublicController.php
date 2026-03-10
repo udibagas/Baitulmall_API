@@ -54,7 +54,6 @@ class PublicController extends Controller
             $totalMustahikJiwa = (int) DB::table('asnaf')
                 ->where('tahun', $currentYear)
                 ->where('status', 'active')
-                ->whereNull('deleted_at') // We keep this but if it fails we catch it or remove it
                 ->sum('jumlah_jiwa');
 
             // 4. RT Impact Aggregation - Raw DB to avoid trait issues
@@ -62,7 +61,7 @@ class PublicController extends Controller
                 ->select('rts.id', 'rts.nomor_rt')
                 ->get()
                 ->map(function($rt) use ($currentYear) {
-                    $jiwa = (int) DB::table('asnaf')->where('rt_id', $rt->id)->where('tahun', $currentYear)->whereNull('deleted_at')->sum('jumlah_jiwa');
+                    $jiwa = (int) DB::table('asnaf')->where('rt_id', $rt->id)->where('tahun', $currentYear)->sum('jumlah_jiwa');
                     $fitrah = (float) DB::table('distribusi')
                         ->join('asnaf', 'distribusi.asnaf_id', '=', 'asnaf.id')
                         ->where('asnaf.rt_id', $rt->id)
@@ -152,7 +151,6 @@ class PublicController extends Controller
                     'analytics' => [
                         'rt_impact' => $rtImpact,
                         'asnaf_breakdown' => DB::table('asnaf')->where('tahun', $currentYear)
-                            ->whereNull('deleted_at')
                             ->select('kategori', DB::raw('count(*) as count'), DB::raw('sum(jumlah_jiwa) as jiwa'))
                             ->groupBy('kategori')->get(),
                         'trends' => $trends,
