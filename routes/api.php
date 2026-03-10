@@ -79,14 +79,21 @@ Route::get('debug-role-fix', function () {
         // Try simulate person creation if missing
         if (!$user->person) {
             try {
-                $person = \App\Models\Person::create([
-                    'user_id' => $user->id,
-                    'nama_lengkap' => $user->name,
-                    'email' => $user->email,
-                    'jenis_kelamin' => 'L'
-                ]);
-                $report['person_creation'] = 'Created: ' . $person->id;
-                $user->setRelation('person', $person);
+                $existingPerson = \App\Models\Person::where('email', $user->email)->first();
+                if ($existingPerson) {
+                    $existingPerson->update(['user_id' => $user->id]);
+                    $report['person_creation'] = 'Linked Existing: ' . $existingPerson->id;
+                    $user->setRelation('person', $existingPerson);
+                } else {
+                    $person = \App\Models\Person::create([
+                        'user_id' => $user->id,
+                        'nama_lengkap' => $user->name,
+                        'email' => $user->email,
+                        'jenis_kelamin' => 'L'
+                    ]);
+                    $report['person_creation'] = 'Created New: ' . $person->id;
+                    $user->setRelation('person', $person);
+                }
             } catch (\Exception $e) {
                 $report['person_creation_error'] = $e->getMessage();
             }
