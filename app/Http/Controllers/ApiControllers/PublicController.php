@@ -123,7 +123,7 @@ class PublicController extends Controller
 
             return response()->json([
                 'success' => true,
-                'v' => '1.0.1',
+                'v' => '9.9.9',
                 'current_year' => $currentYear,
                 'stats' => [
                     'zakat' => [
