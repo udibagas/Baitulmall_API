@@ -293,42 +293,4 @@ Route::prefix('v1')->group(function () {
     Route::get('public/receipt/{type}/{id}', [\App\Http\Controllers\ApiControllers\PublicController::class, 'downloadReceipt']);
 });
 
-// Public sync trigger
 
-Route::get('/force-migrate', function () {
-    try {
-        \Illuminate\Support\Facades\Artisan::call('optimize:clear');
-        \Illuminate\Support\Facades\Cache::forget('public_stats_aggregation_v2');
-        return response()->json(['success' => true, 'output' => \Illuminate\Support\Facades\Artisan::output()]);
-    } catch (\Exception $e) {
-        return response()->json(['success' => false, 'error' => $e->getMessage()]);
-    }
-});
-
-Route::get('/db-check', function () {
-    return response()->json([
-        'asnaf' => \Illuminate\Support\Facades\Schema::getColumnListing('asnaf'),
-        'muzaki' => \Illuminate\Support\Facades\Schema::getColumnListing('muzaki'),
-        'tables' => \Illuminate\Support\Facades\DB::select("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'")
-    ]);
-});
-
-Route::get('/check-controller', function () {
-    return response()->json([
-        'content' => file_get_contents(app_path('Http/Controllers/ApiControllers/PublicController.php'))
-    ]);
-});
-
-Route::get('/check-db', function () {
-    return response()->json([
-        'tables' => \DB::select("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'"),
-        'asnaf_cols' => \DB::select("SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'asnaf'")
-    ]);
-});
-
-Route::get('/check-model', function () {
-    return response()->json([
-        'asnaf' => file_get_contents(app_path('Models/Asnaf.php')),
-        'rt' => file_get_contents(app_path('Models/RT.php'))
-    ]);
-});
