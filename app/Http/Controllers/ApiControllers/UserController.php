@@ -41,14 +41,23 @@ class UserController extends Controller
         $user = User::with('person')->findOrFail($id);
         
         if (!$user->person) {
-            // Create a default Person profile if it doesn't exist so we can add assignments
-            $person = \App\Models\Person::create([
-                'user_id' => $user->id,
-                'nama_lengkap' => $user->name,
-                'email' => $user->email,
-                'jenis_kelamin' => 'L', // Default, can be updated later
-            ]);
-            $user->setRelation('person', $person);
+            // Check if a person with this email already exists but isn't linked to this user
+            $existingPerson = \App\Models\Person::where('email', $user->email)->first();
+            
+            if ($existingPerson) {
+                // Link existing person to this user
+                $existingPerson->update(['user_id' => $user->id]);
+                $user->setRelation('person', $existingPerson);
+            } else {
+                // Create a new default Person profile
+                $person = \App\Models\Person::create([
+                    'user_id' => $user->id,
+                    'nama_lengkap' => $user->name,
+                    'email' => $user->email,
+                    'jenis_kelamin' => 'L', // Default
+                ]);
+                $user->setRelation('person', $person);
+            }
         }
 
         // Update or Create Assignment
