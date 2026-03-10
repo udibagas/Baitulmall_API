@@ -61,6 +61,12 @@ Route::get('final-deploy', function() {
 });
 
 Route::prefix('v1')->group(function () {
+    Route::get('debug-settings', function () {
+        return response()->json([
+            'settings' => \App\Models\Setting::all(),
+            'count' => \App\Models\Setting::count()
+        ]);
+    });
 
     // Protected API Routes
 
