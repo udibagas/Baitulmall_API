@@ -25,7 +25,7 @@ class PublicController extends Controller
      */
     public function statistics()
     {
-        return Cache::remember('public_stats_aggregation_v2', 300, function () {
+        return Cache::remember('public_stats_aggregation_v3', 300, function () {
             $currentYear = date('Y');
 
             // 1. Zakat Fitrah Aggregation (Optimized)
