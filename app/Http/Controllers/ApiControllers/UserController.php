@@ -42,11 +42,16 @@ class UserController extends Controller
         
         if (!$user->person) {
             // Check if a person with this email already exists but isn't linked to this user
-            $existingPerson = \App\Models\Person::where('email', $user->email)->first();
+            // Use withTrashed() to find soft-deleted records that might cause unique constraint violations
+            $existingPerson = \App\Models\Person::withTrashed()->where('email', $user->email)->first();
             
             if ($existingPerson) {
-                // Link existing person to this user
-                $existingPerson->update(['user_id' => $user->id]);
+                // Link existing person to this user and restore if it was soft-deleted
+                $updateData = ['user_id' => $user->id];
+                if ($existingPerson->trashed()) {
+                    $existingPerson->restore();
+                }
+                $existingPerson->update($updateData);
                 $user->setRelation('person', $existingPerson);
             } else {
                 // Create a new default Person profile

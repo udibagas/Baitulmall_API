@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\Hash;
 Route::get('/', function () {
     return response()->json([
         'status' => 'Baitulmall API is online',
-        'version' => '1.2.2',
+        'version' => '1.2.3',
         'docs' => '/api/v1/test'
     ]);
 });

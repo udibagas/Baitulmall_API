@@ -81,10 +81,13 @@ Route::prefix('v1')->group(function () {
             // Try simulate person creation if missing
             if (!$user->person) {
                 try {
-                    $existingPerson = \App\Models\Person::where('email', $user->email)->first();
+                    $existingPerson = \App\Models\Person::withTrashed()->where('email', $user->email)->first();
                     if ($existingPerson) {
+                        if ($existingPerson->trashed()) {
+                            $existingPerson->restore();
+                        }
                         $existingPerson->update(['user_id' => $user->id]);
-                        $report['person_creation'] = 'Linked Existing: ' . $existingPerson->id;
+                        $report['person_creation'] = 'Linked & Restored Existing: ' . $existingPerson->id;
                         $user->setRelation('person', $existingPerson);
                     } else {
                         $person = \App\Models\Person::create([
