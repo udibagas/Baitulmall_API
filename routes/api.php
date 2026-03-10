@@ -304,3 +304,11 @@ Route::get('/force-migrate', function () {
         return response()->json(['success' => false, 'error' => $e->getMessage()]);
     }
 });
+
+Route::get('/db-check', function () {
+    return response()->json([
+        'asnaf' => \Illuminate\Support\Facades\Schema::getColumnListing('asnaf'),
+        'muzaki' => \Illuminate\Support\Facades\Schema::getColumnListing('muzaki'),
+        'tables' => \Illuminate\Support\Facades\DB::select("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'")
+    ]);
+});
