@@ -312,3 +312,9 @@ Route::get('/db-check', function () {
         'tables' => \Illuminate\Support\Facades\DB::select("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'")
     ]);
 });
+
+Route::get('/check-model', function () {
+    return response()->json([
+        'content' => file_get_contents(app_path('Models/Asnaf.php'))
+    ]);
+});
