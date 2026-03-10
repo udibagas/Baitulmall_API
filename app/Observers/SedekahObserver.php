@@ -31,6 +31,10 @@ class SedekahObserver
         Cache::forget("public_stats_aggregation_v2");
         Cache::forget("public_live_stats");
         
-        event(new DashboardUpdated());
+        try {
+            event(new DashboardUpdated());
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Broadcast DashboardUpdated failed: ' . $e->getMessage());
+        }
     }
 }
